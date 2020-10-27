@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy import optimize
 
 #Specify working directory
-path1= "/Users/bbonine/ou/research/ou/corr_func/outputs_2/"
+path1= "/Users/bbonine/ou/research/corr_func/outputs_2/"
 
 # Read in output file
 data = np.genfromtxt(path1+'out.txt', delimiter = ',', unpack=True)
@@ -82,35 +82,56 @@ plt.figure(figsize = [8,8])
 plt.figure(dpi = 300)
 x_fit = np.linspace(66,1000,num = 1000)
 
-plt.subplot(2,1,1)
-plt.plot(x_fit,powerlaw(x_fit,amp,index), label = 'Fit', color = 'red') # fit
-plt.errorbar(x,y, yerr = y_err, fmt= 'k.', capsize = 5, label = "Fields 1 - 739") # data
-plt.text(500,.2, 'Ampli = %5.2f +/- %5.2f' % (amp,ampErr), fontsize = 6) 
-plt.text(500,.18, 'Index = %5.2f +/- %5.2f' % (index, indexErr),fontsize = 6)
-plt.title('Best Fit Power Law: All fields')
-plt.xlabel('Angular Separation (Arcseconds)', fontsize = 12)
-plt.ylabel(r'W$(\theta)$', fontsize = 12)
-plt.legend(fontsize = 8)
 
-plt.subplot(2, 1, 2)
-plt.loglog(x_fit, powerlaw(x_fit, amp, index), label = 'Fit', color = 'red')
-plt.errorbar(x, y, yerr=y_err, fmt='k.', capsize = 5, label = "Fields 1 - 739")  # Data   
-plt.xlabel('Angular Separation (Arcseconds) [Log-scale]', fontsize = 12)
-plt.ylabel(r'W$(\theta)$', fontsize = 12)  
-plt.legend(fontsize = 8)    
-plt.tight_layout()
-plt.savefig(path1+ 'fit.png')
+'''
+%%%%%%%%%%%%%%%%%%
+Linear Scale Fit
+%%%%%%%%%%%%%%%%%%
+'''
+
+plt.figure(figsize = [8,6], dpi = 200)
+plt.plot(x_fit,powerlaw(x_fit,amp,index), label = 'Fit', color = 'red', linewidth = 1) # fit
+plt.errorbar(x,y, yerr = y_err, fmt = 'k^', mew = 1, mfc = 'none', capsize = 4, label = "Fields 1 - 739", linewidth = 1) # data
+plt.text(850,.65, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),2)), fontsize = 10) 
+plt.text(850,.63, r'$\gamma = $' + str(np.around(1-index,2)),fontsize = 10)
+plt.title('Best Fit Power Law: All fields')
+plt.xlabel('Angular Separation (Arcseconds)', fontsize = 8)
+plt.ylabel(r'W$(\theta)$', fontsize = 8)
+plt.legend(fontsize = 8)
+plt.savefig(path1+ 'fit1.png')
 plt.close()
 
 
+'''
+%%%%%%%%%%%%%%%%%%
+Log Scale Fit
+%%%%%%%%%%%%%%%%%%
+'''
+plt.figure(figsize = [8,6], dpi = 200)
+plt.loglog(x_fit, powerlaw(x_fit, amp, index), label = 'SACS', color = 'red')
+plt.errorbar(x, y, yerr=y_err, fmt='k^', capsize = 4, mew =1, mfc = 'none', label = "Fields 1 - 739")  # Data 
+plt.title('Best Fit Power Law: Log Scale)')  
+plt.xlabel('Angular Separation (Arcseconds) [Log-scale]', fontsize = 8)
+plt.text(750,.65, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),2)), fontsize = 10) 
+plt.text(750,.63, r'$\gamma = $' + str(np.around(1-index,2)),fontsize = 10)
+plt.ylabel(r'W$(\theta)$', fontsize =8)  
+plt.legend(fontsize = 8)    
+plt.savefig(path1+ 'fit2.png')
+plt.close()
 
-plt.figure(dpi = 300)
-plt.hist((1/ratios), bins =50,  color = 'limegreen' , histtype = 'step', linewidth = 1)
+
+'''
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Histogram for Random Sources
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+'''
+plt.figure(figsize = [8,6], dpi = 300)
+plt.hist((1/ratios), bins =50,  color = '#AAAAFF' , histtype = 'stepfilled', linewidth = 1, alpha = 0.7)
 plt.xlabel(r'$\frac{R}{D}$')
 plt.ylabel('Counts')
 plt.title('Ratio of Simulated to Real Sources in Each Field')
 plt.xlim(0,4)
-plt.text(3.5, 110, r'$\mu = 1.3 $', fontsize = 10)
+plt.text(2.5, 80, r'$\mu = $' + str(np.around(np.mean(ratios),2)), fontsize = 12)
 plt.savefig(path1+ '/ratios.png')
 plt.close()
 
