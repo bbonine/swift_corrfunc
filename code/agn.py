@@ -280,7 +280,7 @@ for j in range(0,len(dr)):
 centers = 0.5*(bins[1:]+ bins[:-1])
 
 # Save output arrays to file
-np.savetxt(path1+ '/out.txt', (centers,corr,varr) delimiter = ',')
+np.savetxt(path1+ '/out.txt', (centers,corr,varr), delimiter = ',')
 np.savetxt(path1+'/ratios.txt', (ratio), delimiter = ',')
 print("Correlation Analysis complete. Have a great day!")
 
