@@ -10,7 +10,7 @@ import os
 
 
 # Read in AGN table:
-path = '/Users/bbonine/ou/research/ou/corr_func/data/'
+path = '/Users/bbonine/ou/research/corr_func/data/'
 # Remote version: cat = "/home/bonine/donnajean/research/agn_corr/data/agntable_total.txt"
 cat = path + 'agntable_total.txt'
 field = np.loadtxt(cat, dtype = str,delimiter = None, skiprows = 1, usecols=(15) , unpack = True)
@@ -39,7 +39,7 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/ou/corr_func/outputs_2/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_2/"
 os.mkdir(path1)
 
 
@@ -70,23 +70,32 @@ ratio = []
 
 #Begin looping through fields
 
+# Swift Params
+pixel_angle_sec = (47.1262 / 20)**2 # [square arcseconds]
+pixel_angle_deg = (pixel_angle_sec / 3600**2)
+pix_scale = 47.1262 / 20 # arcseconds / pixel
 
+# From Dai et al 2015::
+a = 1.34
+b = 2.37 # +/- 0.01
+f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
+k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
+s_ref = 10**-14 # erg cm^-2 s^-1
+
+# Loop through fields
 for i in range(0,len(field_list)):
-    pixel_angle_sec = (47.1262 / 20)**2 # [square arcseconds]
-    pixel_angle_deg = (pixel_angle_sec / 3600**2)
-    pix_scale = 47.1262 / 20 # arcseconds / pixel
-    # Integrate the broken power law from the paper:
     a = 1.34
     b = 2.37 # +/- 0.01
     f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
     k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
     s_ref = 10**-14 # erg cm^-2 s^-1
 
+
     def f3(x):
-        return ((1/s_ref)**-a)*k*(1/(-a+1))*((f_b**(-a+1))-x**(-a+1)) 
+        return (1/(-a+1))*(1/s_ref)**(-a)*k*(x**(-a+1))
 
     def f4(x):
-        return ((1/s_ref)**-b)*k*((f_b/s_ref)**(b-a))*(-x**(-b+1))
+        return (1/s_ref)**(-b)*k*(f_b/s_ref)**(b-a)*(1/(-b+1))*(x**(-b+1))
     
     # Read in the relevant exposure map:
     here = np.where(field == field_list[i])
@@ -118,12 +127,12 @@ for i in range(0,len(field_list)):
         ref_flux =  image_data[500,500]
     
         # Use the interpolated function to extract flux limit based off reference flux
-        flux_lim = np.asscalar(func1(ref_flux))
+        flux_lim = func1(ref_flux)
     
         # Find the flux limit for each pixel:
         fluxlimit = np.zeros(len(exp_map_1d))
         for j in range(0,len(fluxlimit)):
-            fluxlimit[j] = np.asscalar(func1(exp_map_1d[j]))
+            fluxlimit[j] = func1(exp_map_1d[j])
             
         fluxlimit_1d = np.asarray(fluxlimit) #convert to numpy array
         fluxlimit_2d = np.reshape(fluxlimit_1d,(-1,len(image_data[0])))
@@ -132,14 +141,13 @@ for i in range(0,len(field_list)):
         Npix = []
         for j in range(0,len(fluxlimit_1d)):
             if fluxlimit_1d[j] <= f_b:
-                Npix.append(f3(fluxlimit_1d[j]) + f4(fluxlimit_1d[j]))
+                Npix.append(f3(fluxlimit_1d[j]))
             else:
                 Npix.append(f4(fluxlimit_1d[j]))
     
         N = np.abs(Npix)
         N_source = pixel_angle_deg*N # Number of sources
-        N_norm = N_source
-        np.max(N_source) # Normalize
+        N_norm = N_source / np.max(N_source) # Normalize
     
         # Construct weight map to gerenate random image:
         weight_map = np.reshape(N_norm,(-1,len(image_data[0])))
@@ -191,6 +199,7 @@ for i in range(0,len(field_list)):
             plt.title('Field '+field[here][0]+ ': Data Image')
             plt.savefig(path2 + '/data_img.png')
             plt.close()
+            print("Random Image" + str(i+1) + " created...")
             
             
 
