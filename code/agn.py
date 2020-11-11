@@ -39,7 +39,7 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_2/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_test/"
 os.mkdir(path1)
 
 
@@ -55,7 +55,7 @@ Begin Looping through each exposure map
 
 # Make null arrays for pair counts
 # Specify binning
-bins = np.linspace(0,1200,10) #linbins
+bins = np.linspace(0,1200,8) #linbins
 #bins = np.logspace(0,3.1,10) #logbins
 dd_stack = np.zeros(len(bins))
 dr_stack = np.zeros(len(bins))
@@ -83,7 +83,7 @@ k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
 s_ref = 10**-14 # erg cm^-2 s^-1
 
 # Loop through fields
-for i in range(0,len(field_list)):
+for i in range(0,10):
     a = 1.34
     b = 2.37 # +/- 0.01
     f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
@@ -105,8 +105,8 @@ for i in range(0,len(field_list)):
     
     # Check for exposure map
     
-    if os.path.isfile(path  + field[here][0] +'/expo.fits') == True:
-        expmap = path + field[here][0] +'/expo.fits'
+    if os.path.isfile(path  + field_list[i] +'/expo.fits') == True:
+        expmap = path + field_list[i] +'/expo.fits'
         print("Exposure map located")
         # Make directory for outuput files for this field:
         path2 = path1+field[here][0]
@@ -246,16 +246,21 @@ for i in range(0,len(field_list)):
             rr = np.histogram(rr_ang_dist, bins = bins)[0]
             
             
-            for j in range(0,len(dr)):
-                dd_stack[j] += dd[j]/ 2.
-                dr_stack[j] += dr[j] / 2.
-                rr_stack[j] += rr[j]/2.
-                
-            N_d += len(data_x)
-            N_r += len(rand_x)
             
             # Collect ratio of data to random points
             ratio.append(len(data_x) / len(rand_x))
+            
+            # Tally pair counts in field if rand / data < 2:
+            if ratio[i] <= 2:
+            
+                for j in range(0,len(dr)):
+                    dd_stack[j] += dd[j] / 2
+                    dr_stack[j] += dr[j] / 2
+                    rr_stack[j] += rr[j] / 2
+                
+                N_d += len(data_x)
+                N_r += len(rand_x)
+            
             
 
     
@@ -268,14 +273,11 @@ N = (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
 def W(DD,DR,RR):
     return (N *(( DD* RR) / (DR)**2) ) -1
 
-corr = []
-for j in range(0,len(dr)):
-    corr.append(W(dd_stack[j],dr_stack[j],rr_stack[j]))
+
+corr = W(dd_stack,dr_stack,rr_stack)
 
 #Varience:
-varr = []
-for j in range(0,len(dr)):
-    varr.append(3*(1+(corr[j]))**2 / dd_stack[j])
+varr = 3*((1+(corr)**2) / dd_stack)
 
 centers = 0.5*(bins[1:]+ bins[:-1])
 

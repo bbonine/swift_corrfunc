@@ -16,7 +16,7 @@ from scipy import optimize
 path1= "/Users/bbonine/ou/research/corr_func/outputs_2/"
 
 #Specify output directory 
-path2 = "/Users/bbonine/ou/research/corr_func/figures/11_3/"
+path2 = "/Users/bbonine/ou/research/corr_func/figures/11_10/"
 
 
 # Read in output file
@@ -148,13 +148,30 @@ plt.xlabel(r'$\frac{R}{D}$')
 plt.ylabel('Counts')
 plt.title('Ratio of Simulated to Real Sources in Each Field')
 plt.xlim(0,4)
-plt.text(2.5, 80, r'$\mu = $' + str(np.around(np.mean(ratios),2)), fontsize = 12)
-#plt.savefig(path2+ '/ratios.png')
+plt.text(2.5, 80, r'$\mu = $' + str(np.around(np.mean(1/ratios),2)), fontsize = 12)
+plt.savefig(path2+ '/ratios.png')
 plt.close()
 
 
 
 
+'''
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Histogram for Random Sources; cut
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+'''
+
+here = np.where(1/ratios < 2)
+plt.figure(figsize = [8,6], dpi = 300)
+plt.hist((1/ratios[here]), bins =20,  color = '#AAAAFF' , histtype = 'stepfilled', linewidth = 1, alpha = 0.7)
+plt.xlabel(r'$\frac{R}{D}$')
+plt.ylabel('Counts')
+plt.title('Ratio of Simulated to Real Sources in Each Field: Reduced Sample')
+plt.xlim(0,2)
+plt.text(1.5, 80, r'$N_{fields} = $' + str(len(here[0])), fontsize = 8)
+plt.text(1.5, 75, r'$\mu = $' + str(np.around(np.mean(1/ratios[here]),2)), fontsize = 8)
+plt.savefig(path2+ '/ratios_cut.png')
+plt.close()
 
 
 
