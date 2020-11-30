@@ -39,7 +39,7 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_test/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_rand_2/"
 os.mkdir(path1)
 
 
@@ -55,7 +55,7 @@ Begin Looping through each exposure map
 
 # Make null arrays for pair counts
 # Specify binning
-bins = np.linspace(0,1200,8) #linbins
+bins = np.linspace(0,1000,6) #linbins
 #bins = np.logspace(0,3.1,10) #logbins
 dd_stack = np.zeros(len(bins))
 dr_stack = np.zeros(len(bins))
@@ -83,7 +83,11 @@ k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
 s_ref = 10**-14 # erg cm^-2 s^-1
 
 # Loop through fields
-for i in range(0,10):
+
+#loops = np.len(field_list) # all fields
+loops = 300
+
+for i in range(0,loops):
     a = 1.34
     b = 2.37 # +/- 0.01
     f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
@@ -97,14 +101,15 @@ for i in range(0,10):
     def f4(x):
         return (1/s_ref)**(-b)*k*(f_b/s_ref)**(b-a)*(1/(-b+1))*(x**(-b+1))
     
+
+    
     # Read in the relevant exposure map:
     here = np.where(field == field_list[i])
     # Extract source positions in this field:
-    data_x = x[here]
-    data_y = y[here]
-    
-    # Check for exposure map
-    
+    #data_x = x[here]
+    #data_y = y[here]
+     
+    # Check for exposure map 
     if os.path.isfile(path  + field_list[i] +'/expo.fits') == True:
         expmap = path + field_list[i] +'/expo.fits'
         print("Exposure map located")
@@ -159,19 +164,22 @@ for i in range(0,10):
         plt.savefig(path2+'/expmap.png')
         plt.close()
         print("Exposure map " + str(i+1) + " created..." )
+        
+        
     
         # Begin making random image:
         weight_tot = np.sum(N_norm) 
         weight_outer = np.cumsum(N_norm) # 'Outer edge' of pixel weight
         weight_inner = weight_outer - N_norm # 'Inner edge' of pixel weight
-    
         n_sources = int(np.sum(N_source)) 
         n_dim = 1000 # specify the dimmension of our image
         img2 = np.zeros(n_dim*n_dim)
-        var = np.random.uniform(0,weight_tot,n_sources)
+        img3 = np.zeros(n_dim*n_dim) # delete this if only using one random image; added 11/15
+        var1 = np.random.uniform(0,weight_tot,n_sources)
+        var2 = np.random.uniform(0,weight_tot,n_sources)
         for l in range(0,n_sources):
             for m in range(0,len(img2)):
-                if var[l] > weight_inner[m] and var[l] < weight_outer[m]:
+                if var1[l] > weight_inner[m] and var1[l] < weight_outer[m]:
                     img2[m] = img2[m] + 1 # specifies flux of pixel. 
     
         # Save random image to file:
@@ -179,6 +187,24 @@ for i in range(0,10):
         here2 = np.where(rand_img > 0)
         rand_x = here2[0] # image position of x values
         rand_y = here2[1] # image position of y vales
+        
+        
+        '''
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        Test 11/14: Repeat random image generation; call this one the data
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        '''
+        for l in range(0,n_sources):
+            for m in range(0,len(img3)):
+                if var2[l] > weight_inner[m] and var2[l] < weight_outer[m]:
+                    img3[m] = img3[m] + 1 # specifies flux of pixel. 
+    
+        # Save random image to file:
+        data_img2 = np.reshape(img3,(n_dim,n_dim)) 
+        here3 = np.where(data_img2 > 0)
+        data_x = here3[0] # image position of x values
+        data_y = here3[1] # image position of y vales
+        
         
         if len(data_x) > 1 and len(rand_x) > 1:
         
@@ -248,11 +274,10 @@ for i in range(0,10):
             
             
             # Collect ratio of data to random points
-            ratio.append(len(data_x) / len(rand_x))
             
+            if len(rand_x) / len(data_x) <= 2:
+                ratio.append(len(data_x) / len(rand_x))
             # Tally pair counts in field if rand / data < 2:
-            if ratio[i] <= 2:
-            
                 for j in range(0,len(dr)):
                     dd_stack[j] += dd[j] / 2
                     dr_stack[j] += dr[j] / 2
@@ -282,7 +307,7 @@ varr = 3*((1+(corr)**2) / dd_stack)
 centers = 0.5*(bins[1:]+ bins[:-1])
 
 # Save output arrays to file
-np.savetxt(path1+ '/out.txt', (centers,corr,varr), delimiter = ',')
+np.savetxt(path1+ '/out.txt', (centers[:],corr,varr), delimiter = ',')
 np.savetxt(path1+'/ratios.txt', (ratio), delimiter = ',')
 print("Correlation Analysis complete. Have a great day!")
 
