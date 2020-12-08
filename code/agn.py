@@ -39,9 +39,14 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_rand_2/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_rand/"
 os.mkdir(path1)
 
+
+#######################################
+# Hamilton Estimator
+def W_ham(N,DD,DR,RR):
+    return (N *(( DD* RR) / (DR)**2) ) -1
 
 
 '''
@@ -50,16 +55,14 @@ Begin Looping through each exposure map
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 '''
 
-# Save empty arrays for later. Temproary solution; know arrays will have 10 entries
-#num_fields = 739
+
 
 # Make null arrays for pair counts
 # Specify binning
-bins = np.linspace(0,1000,6) #linbins
-#bins = np.logspace(0,3.1,10) #logbins
-dd_stack = np.zeros(len(bins))
-dr_stack = np.zeros(len(bins))
-rr_stack = np.zeros(len(bins))
+num_bins = 7
+bins = np.logspace(2,3.2,num_bins)
+
+
 
 # Total number of data and random points (append in loop)
 N_d = 0
@@ -82,18 +85,34 @@ f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
 k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
 s_ref = 10**-14 # erg cm^-2 s^-1
 
-# Loop through fields
+
+
+'''
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Begin main loop
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+'''
+
+################################################
+# Specify number of fields to include here:
 
 #loops = np.len(field_list) # all fields
-loops = 300
+loops = 20
 
+# Null array to populate with correlation function values
+# Note the shape; 
+corr = np.zeros((loops,len(bins)-1))
+varr = np.zeros((loops,len(bins)-1))
+
+flag = np.zeros(loops)
+# Begin loop
 for i in range(0,loops):
+    # Swift telescope values from Dai et al. (2015)
     a = 1.34
     b = 2.37 # +/- 0.01
     f_b = 3.67 * 10 ** (-15) # erg  cm^-2 s^-1
     k = 531.91*10**14 # +/- 250.04; (deg^-2 (erg cm^-2 s^-1)^-1)
     s_ref = 10**-14 # erg cm^-2 s^-1
-
 
     def f3(x):
         return (1/(-a+1))*(1/s_ref)**(-a)*k*(x**(-a+1))
@@ -187,6 +206,7 @@ for i in range(0,loops):
         here2 = np.where(rand_img > 0)
         rand_x = here2[0] # image position of x values
         rand_y = here2[1] # image position of y vales
+        N_r = len(rand_x) # Tally number of random pionts
         
         
         '''
@@ -204,43 +224,46 @@ for i in range(0,loops):
         here3 = np.where(data_img2 > 0)
         data_x = here3[0] # image position of x values
         data_y = here3[1] # image position of y vales
+        N_d = len(data_x) # Tally number of points
         
         
-        if len(data_x) > 1 and len(rand_x) > 1:
         
-            plt.style.use('dark_background')
-            plt.figure(figsize = [12, 12])
-            plt.scatter(rand_x,rand_y, marker = '.', color = 'white', s = 25)
-            plt.xlim(0,1000)
-            plt.ylim(0,1000)
-            plt.title('Field '+field[here][0]+ ': Random Image')
-            plt.savefig(path2 + '/rand_img.png')
-            plt.close()
-            # Save data image to file:
-            plt.style.use('dark_background')
-            plt.figure(figsize = [12, 12])
-            plt.scatter(data_x,data_y, marker = '.', color = 'white', s = 25)
-            plt.xlim(0,1000)
-            plt.ylim(0,1000)
-            plt.title('Field '+field[here][0]+ ': Data Image')
-            plt.savefig(path2 + '/data_img.png')
-            plt.close()
-            print("Random Image" + str(i+1) + " created...")
+        plt.style.use('dark_background')
+        plt.figure(figsize = [12, 12])
+        plt.scatter(rand_x,rand_y, marker = '.', color = 'white', s = 25)
+        plt.xlim(0,1000)
+        plt.ylim(0,1000)
+        plt.title('Field '+field[here][0]+ ': Random Image')
+        plt.savefig(path2 + '/rand_img.png')
+        plt.close()
+        # Save data image to file:
+        plt.style.use('dark_background')
+        plt.figure(figsize = [12, 12])
+        plt.scatter(data_x,data_y, marker = '.', color = 'white', s = 25)
+        plt.xlim(0,1000)
+        plt.ylim(0,1000)
+        plt.title('Field '+field[here][0]+ ': Data Image')
+        plt.savefig(path2 + '/data_img.png')
+        plt.close()
+        print("Random Image" + str(i+1) + " created...")
             
             
 
-            # Begin calculating correlation function
-            
+        # Begin calculating correlation function
+        
+       
+        if len(data_x) and len(rand_x) > 0:
+            #################################################
             # Define pixel distance function between two sources:
             def distance(x2,x1,y2,y1):
                 return (((x2-x1)**2 + (y2-y1)**2)**0.5)
+            
             dist_rr = []
             for j in range(len(rand_x)):
                 for k in range(len(rand_x)):
                     if k != j:
                         dist_rr.append(distance(rand_x[k],rand_x[j],rand_y[k],rand_y[j]))
                         
-            rr_ang_dist = pix_scale * np.asarray(dist_rr) # arcsec/pix * pix = arcsec
             
             # Repeat same process for data-data:
             dist_dd = []
@@ -248,70 +271,88 @@ for i in range(0,loops):
                 for k in range(len(data_x)):
                     if k != j:
                         dist_dd.append(distance(data_x[k],data_x[j],data_y[k],data_y[j]))
-            dd_ang_dist = pix_scale * np.asarray(dist_dd)
+          
             
             # And data-random:
             dist_dr = []
             for j in range(len(data_x)):
                 for k in range(len(rand_x)):
-                    if k != j:
-                        dist_dr.append(distance(rand_x[k],data_x[j],rand_y[k],data_y[j]))
+                    dist_dr.append(distance(rand_x[k],data_x[j],rand_y[k],data_y[j]))
+            
+            
+            
+            ######################################################
+            #Convert pixel separation into arcseconds
+            rr_ang_dist = pix_scale * np.asarray(dist_rr)
+            dd_ang_dist = pix_scale * np.asarray(dist_dd)
             dr_ang_dist = pix_scale * np.asarray(dist_dr)
-            
-            '''
-            # Bin the data:
-            dd_binned = np.histogram(dd_ang_dist)
-            bins = dd_binned[1] # selects the 'bins' array from np.histogram
-           '''
-    
-            # Collect pair, point count for this field
-            
-           # Loop through arrays 
-            dd = np.histogram(dd_ang_dist, bins = bins)[0]
-            dr = np.histogram(dr_ang_dist, bins = bins)[0]
-            rr = np.histogram(rr_ang_dist, bins = bins)[0]
-            
-            
-            
-            # Collect ratio of data to random points
-            
-            if len(rand_x) / len(data_x) <= 2:
-                ratio.append(len(data_x) / len(rand_x))
-            # Tally pair counts in field if rand / data < 2:
-                for j in range(0,len(dr)):
-                    dd_stack[j] += dd[j] / 2
-                    dr_stack[j] += dr[j] / 2
-                    rr_stack[j] += rr[j] / 2
-                
-                N_d += len(data_x)
-                N_r += len(rand_x)
-            
-            
-
-    
-    
-            
- # Begin calculating stacked correlation function
-    
-N = (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
-
-def W(DD,DR,RR):
-    return (N *(( DD* RR) / (DR)**2) ) -1
 
 
-corr = W(dd_stack,dr_stack,rr_stack)
+            ###################################################
+            # Bin pairs by angular separation
+            dd = np.histogram(dd_ang_dist, bins = bins)[0] / 2
+            dr = np.histogram(dr_ang_dist, bins = bins)[0] / 2
+            rr = np.histogram(rr_ang_dist, bins = bins)[0] /2
+            
+           
+            ###################################################
+            #Compute Correlation function; 
+            N_ham= (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
+            corr[i] = W_ham(N_ham,dd,dr,rr)
+            
+            # Varience
+        
+            varr[i] = 3*((1+(corr[i])**2) / dd)
+        
+        else:
+            # Flag fields with not enough pairs to compute correlation function
+            flag[i] = 1
+            print("Insuffiencent sources in this field!")
+
+
+ # Flag fields that have NaN's:     
+nan_check_corr = np.isnan(corr)
+inf_check_varr = np.isinf(varr)
+for i in range(0,len(corr)):
+    if 1 in nan_check_corr[i] or inf_check_varr[i]:
+        flag[i] = 1
+
+# Select unflagged fields  
+here4 = np.where(flag == 0)    
+
+corr = corr[here4]
+varr = varr[here4]    
+        
+            
+'''
+    
+###################################################     
+# Begin calculating stacked correlation function
+    
+N_norm= (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
+
+
+
+# Landy- Salazay Estimator
+def W_ls(DD,DR,RR):
+    return (( DD - (2*DR) + RR) / (RR)) -1
+
+
+corr_ham = W_ham(dd_stack,dr_stack,rr_stack)
+
 
 #Varience:
-varr = 3*((1+(corr)**2) / dd_stack)
+varr = 3*((1+(corr_ham)**2) / dd_stack)
 
 centers = 0.5*(bins[1:]+ bins[:-1])
 
 # Save output arrays to file
-np.savetxt(path1+ '/out.txt', (centers[:],corr,varr), delimiter = ',')
+np.savetxt(path1+ '/out_1.txt', (centers[:],corr_ham,varr), delimiter = ',')
+np.savetxt(path1+ '/out_2.txt', (centers[:],corr_ls,varr), delimiter = ',')
 np.savetxt(path1+'/ratios.txt', (ratio), delimiter = ',')
 print("Correlation Analysis complete. Have a great day!")
 
-'''centers = 0.5*(bins[1:]+ bins[:-1])
+centers = 0.5*(bins[1:]+ bins[:-1])
 # Plot results
 plt.style.use('default')
 plt.figure(figsize = [12, 8])
