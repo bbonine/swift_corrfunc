@@ -5,6 +5,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 #from scipy.integrate import quad
 import matplotlib.pyplot as plt
 from astropy.io import fits
+from sklearn.neighbors import KDTree
 import os
 
 
@@ -39,7 +40,8 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_rand/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_3/"
+path3 = "/Users/bbonine/ou/research/corr_func/figures/12_9/"
 os.mkdir(path1)
 
 
@@ -47,6 +49,10 @@ os.mkdir(path1)
 # Hamilton Estimator
 def W_ham(N,DD,DR,RR):
     return (N *(( DD* RR) / (DR)**2) ) -1
+
+# Landy- Salazay Estimator
+def W_ls(DD,DR,RR):
+    return (( DD - (2*DR) + RR) / (RR)) -1
 
 
 '''
@@ -59,8 +65,9 @@ Begin Looping through each exposure map
 
 # Make null arrays for pair counts
 # Specify binning
-num_bins = 7
-bins = np.logspace(2,3.2,num_bins)
+num_bins = 8
+bins = np.logspace(0,2.5, num_bins)
+bins = np.linspace(0,600,num_bins) # pixels 
 
 
 
@@ -69,7 +76,7 @@ N_d = 0
 N_r = 0
 field_count = 0
 
-ratio = []
+
 
 #Begin looping through fields
 
@@ -97,14 +104,16 @@ Begin main loop
 # Specify number of fields to include here:
 
 #loops = np.len(field_list) # all fields
-loops = 20
+loops = 30
 
 # Null array to populate with correlation function values
 # Note the shape; 
 corr = np.zeros((loops,len(bins)-1))
 varr = np.zeros((loops,len(bins)-1))
-
+ratio = np.zeros(loops)
 flag = np.zeros(loops)
+
+
 # Begin loop
 for i in range(0,loops):
     # Swift telescope values from Dai et al. (2015)
@@ -193,7 +202,7 @@ for i in range(0,loops):
         n_sources = int(np.sum(N_source)) 
         n_dim = 1000 # specify the dimmension of our image
         img2 = np.zeros(n_dim*n_dim)
-        img3 = np.zeros(n_dim*n_dim) # delete this if only using one random image; added 11/15
+        #img3 = np.zeros(n_dim*n_dim) # delete this if only using one random image; added 11/15
         var1 = np.random.uniform(0,weight_tot,n_sources)
         var2 = np.random.uniform(0,weight_tot,n_sources)
         for l in range(0,n_sources):
@@ -213,17 +222,17 @@ for i in range(0,loops):
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         Test 11/14: Repeat random image generation; call this one the data
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        '''
+        
         for l in range(0,n_sources):
             for m in range(0,len(img3)):
                 if var2[l] > weight_inner[m] and var2[l] < weight_outer[m]:
                     img3[m] = img3[m] + 1 # specifies flux of pixel. 
-    
+         '''
         # Save random image to file:
-        data_img2 = np.reshape(img3,(n_dim,n_dim)) 
-        here3 = np.where(data_img2 > 0)
-        data_x = here3[0] # image position of x values
-        data_y = here3[1] # image position of y vales
+        #data_img2 = np.reshape(img3,(n_dim,n_dim)) 
+        #here3 = np.where(data_img2 > 0)
+        data_x = x[here] # image position of x values
+        data_y = y[here] # image position of y vales
         N_d = len(data_x) # Tally number of points
         
         
@@ -251,81 +260,109 @@ for i in range(0,loops):
 
         # Begin calculating correlation function
         
-       
+        '''
+         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+           12/8: Try KD tree implementation to get pair counts
+         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+         '''
         if len(data_x) and len(rand_x) > 0:
-            #################################################
-            # Define pixel distance function between two sources:
-            def distance(x2,x1,y2,y1):
-                return (((x2-x1)**2 + (y2-y1)**2)**0.5)
+           
+            ##########################################
+            # Format data for sklearn
+            data = np.vstack((data_x,data_y)).T
+            data_rand = np.vstack((rand_x,rand_y)).T
+           
+            #############################################################
+            # Set up KD trees
+            KDT_D = KDTree(data)
+            KDT_R = KDTree(data_rand)
             
-            dist_rr = []
-            for j in range(len(rand_x)):
-                for k in range(len(rand_x)):
-                    if k != j:
-                        dist_rr.append(distance(rand_x[k],rand_x[j],rand_y[k],rand_y[j]))
-                        
-            
-            # Repeat same process for data-data:
-            dist_dd = []
-            for j in range(len(data_x)):
-                for k in range(len(data_x)):
-                    if k != j:
-                        dist_dd.append(distance(data_x[k],data_x[j],data_y[k],data_y[j]))
-          
-            
-            # And data-random:
-            dist_dr = []
-            for j in range(len(data_x)):
-                for k in range(len(rand_x)):
-                    dist_dr.append(distance(rand_x[k],data_x[j],rand_y[k],data_y[j]))
-            
-            
-            
-            ######################################################
-            #Convert pixel separation into arcseconds
-            rr_ang_dist = pix_scale * np.asarray(dist_rr)
-            dd_ang_dist = pix_scale * np.asarray(dist_dd)
-            dr_ang_dist = pix_scale * np.asarray(dist_dr)
+                       
+            #############################################################
+            # Tally pair counts
+            counts_DD = KDT_D.two_point_correlation(data, bins)
+            counts_RR = KDT_R.two_point_correlation(data_rand, bins)
+            counts_DR = KDT_R.two_point_correlation(data, bins)
 
-
-            ###################################################
-            # Bin pairs by angular separation
-            dd = np.histogram(dd_ang_dist, bins = bins)[0] / 2
-            dr = np.histogram(dr_ang_dist, bins = bins)[0] / 2
-            rr = np.histogram(rr_ang_dist, bins = bins)[0] /2
             
+            DD = np.diff(counts_DD)
+            RR = np.diff(counts_RR)
+            DR = np.diff(counts_DR)
+
+            
+            # Determine ratio of random-to-data pairs
+            ratio[i] = len(rand_x) / len(data_x)
+        
            
             ###################################################
             #Compute Correlation function; 
-            N_ham= (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
-            corr[i] = W_ham(N_ham,dd,dr,rr)
+            factor = len(data_rand) * 1. / len(data)
+            corr[i] = W_ham(factor,DD,DR,RR)
+            
             
             # Varience
         
-            varr[i] = 3*((1+(corr[i])**2) / dd)
+            varr[i] = 3*((1+(corr[i])**2) / DD)
         
-        else:
-            # Flag fields with not enough pairs to compute correlation function
-            flag[i] = 1
-            print("Insuffiencent sources in this field!")
+
+          
 
 
- # Flag fields that have NaN's:     
+# Flag fields      
 nan_check_corr = np.isnan(corr)
 inf_check_varr = np.isinf(varr)
 for i in range(0,len(corr)):
-    if 1 in nan_check_corr[i] or inf_check_varr[i]:
+    if 1 in nan_check_corr[i] or 1 in inf_check_varr[i]:       # Check for NaN, inf
         flag[i] = 1
-
+    
+    if ratio[i] > 3:                                           # Check for high ratios
+        flag[i] = 1                         
 # Select unflagged fields  
-here4 = np.where(flag == 0)    
+here4 = np.where(flag == 0)[0]    
 
 corr = corr[here4]
 varr = varr[here4]    
-        
-            
-'''
-    
+       
+  
+
+corr_mean = np.mean(corr, axis = 0)    
+varr_mean = np.mean(varr, axis = 0)
+
+corr_weight = np.average(corr,axis = 0, weights = varr)      
+
+#Plot 
+centers = 0.5*(bins[1:]+ bins[:-1])*pix_scale
+
+plt.style.use('default')
+plt.figure(figsize = [12, 8], dpi = 300)
+
+plt.errorbar(centers,corr_mean, yerr = np.sqrt(varr_mean), fmt = '.', capsize = 5, label = "Fields 1 - 20", marker = 's', color = 'maroon', ms = 4)
+plt.xlabel('Angular Separation (Arcseconds)')
+plt.ylabel(r'W$(\theta)$')
+plt.title('Mean Correlation Function')
+plt.savefig(path3 + 'mean.png')
+plt.close
+
+
+plt.figure(figsize = [12, 8], dpi = 300)
+
+plt.errorbar(centers,corr_weight, yerr = np.sqrt(varr_mean), fmt = '.', capsize = 5, label = "Fields 1 - 20", marker = 's', color = 'maroon', ms = 4)
+plt.xlabel('Angular Separation (Arcseconds)')
+plt.ylabel(r'W$(\theta)$')
+plt.title('Weighted Average Correlation Function')
+plt.savefig(path3+'weight_avg.png')
+plt.close
+
+
+
+
+
+
+
+
+
+
+''' 
 ###################################################     
 # Begin calculating stacked correlation function
     
@@ -344,7 +381,8 @@ corr_ham = W_ham(dd_stack,dr_stack,rr_stack)
 #Varience:
 varr = 3*((1+(corr_ham)**2) / dd_stack)
 
-centers = 0.5*(bins[1:]+ bins[:-1])
+
+
 
 # Save output arrays to file
 np.savetxt(path1+ '/out_1.txt', (centers[:],corr_ham,varr), delimiter = ',')
@@ -364,7 +402,7 @@ plt.title('Stacked Correlation Function')
 plt.xscale('log')
 plt.yscale('log')
 plt.savefig(path1 + '/log_corr.png')
-plt.close()'''
+plt.close()corr
 
 
 
@@ -373,7 +411,7 @@ plt.close()'''
 
         
 
-'''plt.style.use('default')
+plt.style.use('default')
 plt.figure(figsize = [12, 8])
 plt.errorbar(bins[0:10],corr_1, yerr = np.sqrt(varr_1), fmt = '.', capsize = 5, label = "Fields 1 - 184", marker = 's', color = 'black', ms = 4)
 plt.errorbar(bins[0:10],corr_2, yerr = np.sqrt(varr_2), fmt = '.', capsize = 5, label = "Fields 185 - 369", marker = '^', color = 'darkgray', ms = 4)
