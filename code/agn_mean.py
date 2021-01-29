@@ -34,8 +34,8 @@ field_list = np.unique(field)
 
 # Create output folders
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_1_18_21_test/"
-path3 = "/Users/bbonine/ou/research/corr_func/figures/1_18_21_test/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_1_29_21_test/"
+path3 = "/Users/bbonine/ou/research/corr_func/figures/1_29_21_test/"
 path4 = path3 + "flag/"
 
 if os.path.isdir(path1) == False:
@@ -84,7 +84,8 @@ s_ref = 10**-14 # erg cm^-2 s^-1
 ################################################
 # Specify number of fields to include here:
 
-loops = 25
+
+loops = 100
 #loops = len(field_list) # all fields
 
 
@@ -153,16 +154,14 @@ for i in range(0,loops):
         return (1/s_ref)**(-b)*k*(f_b/s_ref)**(b-a)*(1/(-b+1))*(x**(-b+1))
     '''
     
-    '''
-    Update 1/17/21: Try numerical integration
+
+# Analytically integrate above dn/ds relations using appropriate bounds
+    def n_1(s):
+        return k*(1/(-a+1))*(1/s_ref)**(-a)*(f_b**(-a+1)-s**(-a+1))
     
-    '''
-    def integrand_1(s):
-        return k*(s/s_ref)**(-a)
-    
-    def integrand_2(s):
-        return k*(f_b/s_ref)**(b-a) * (s/s_ref)**(-b)
-    
+    def n_2(s):
+        return k*(f_b/s_ref)**(b-a)*(1/s_ref)**(-b)*(1/(-b+1))*(-s**(-b+1))
+        
 
     
     # Read in the relevant exposure map:
@@ -213,11 +212,11 @@ for i in range(0,loops):
 
         # Integrate dn/ds to find number of AGN per square degree for given flux limits   
         for j in range(0,len(fluxlimit_1d)):
-            if fluxlimit_1d[j] <= f_b:
-                Npix[j] = np.abs((quad(integrand_1,0,fluxlimit_1d[j])[0]))
+            if fluxlimit_1d[j] > f_b:
+                Npix[j] = n_2(fluxlimit_1d[j])
             
             else:
-                Npix[j] = np.abs((quad(integrand_1,0,f_b)[0]+quad(integrand_2,f_b,fluxlimit_1d[j])[0]))
+                Npix[j] = n_1(fluxlimit_1d[j]) +n_2(f_b)
                     
 
     
@@ -229,9 +228,8 @@ for i in range(0,loops):
         weight_map = np.reshape(N_norm,(-1,len(image_data[0])))
         
         plt.style.use('default')
-        plt.figure(figsize = [10, 10])
+        plt.figure(figsize = [8, 8])
         plt.imshow(weight_map,cmap = 'gray', interpolation = 'none', origin = 'lower', norm = LogNorm())
-        plt.colorbar()
         plt.title('Field '+field[target][0]+ ': Normalized sources per pixel')
         plt.savefig(path2+'/expmap.png')
         plt.close()
@@ -243,7 +241,12 @@ for i in range(0,loops):
         weight_tot = np.sum(N_norm) 
         weight_outer = np.cumsum(N_norm) # 'Outer edge' of pixel weight
         weight_inner = weight_outer - N_norm # 'Inner edge' of pixel weight
-        n_sources = int(np.sum(N_source)) 
+        
+        '''
+        1/29/21: Check to see what happens when manually specifying high number of sources. 
+        Consitent with weight maps?
+        '''
+        #n_sources = int(np.sum(N_source)) 
         
         # Record number of sources
         num_source[i] = n_sources 
@@ -252,7 +255,7 @@ for i in range(0,loops):
         img2 = np.zeros(n_dim*n_dim)
         #img3 = np.zeros(n_dim*n_dim) # delete this if only using one random image; added 11/15
         
-     
+        # Draw random weight map values
         var = np.random.uniform(0,weight_tot,n_sources)
 
         
@@ -292,7 +295,7 @@ for i in range(0,loops):
         
         
         plt.style.use('dark_background')
-        plt.figure(figsize = [12, 12])
+        plt.figure(figsize = [8, 8])
         plt.scatter(rand_x,rand_y, marker = '.', color = 'white', s = 25)
         plt.xlim(0,1000)
         plt.ylim(0,1000)
@@ -301,7 +304,7 @@ for i in range(0,loops):
         plt.close()
         # Save data image to file:
         plt.style.use('dark_background')
-        plt.figure(figsize = [12, 12])
+        plt.figure(figsize = [8, 8])
         plt.scatter(data_x,data_y, marker = '.', color = 'white', s = 25)
         plt.xlim(0,1000)
         plt.ylim(0,1000)
@@ -309,7 +312,6 @@ for i in range(0,loops):
         plt.savefig(path2 + '/data_img.png')
         plt.close()
         print("Random Image" + str(i+1) + " created...")
-            
             
 
         # Begin calculating correlation function
@@ -352,13 +354,13 @@ for i in range(0,loops):
             
             
             # Bin 
-            dd_1 = np.histogram(dd_ang_dist, bins = bins_lin)[0] /2
+            dd_1 = np.histogram(dd_ang_dist, bins = bins_lin)[0] 
             dr_1 = np.histogram(dr_ang_dist, bins = bins_lin)[0]
-            rr_1 = np.histogram(rr_ang_dist, bins = bins_lin)[0] /2
+            rr_1 = np.histogram(rr_ang_dist, bins = bins_lin)[0] 
             
-            dd_2 = np.histogram(dd_ang_dist, bins = bins_log)[0] /2
+            dd_2 = np.histogram(dd_ang_dist, bins = bins_log)[0] 
             dr_2 = np.histogram(dr_ang_dist, bins = bins_log)[0]
-            rr_2 = np.histogram(rr_ang_dist, bins = bins_log)[0] /2
+            rr_2 = np.histogram(rr_ang_dist, bins = bins_log)[0] 
         
 
     
@@ -378,6 +380,10 @@ for i in range(0,loops):
             # Tally
             rand_counts[i] = N_r
             data_counts[i] = N_d
+            
+                        
+            # Tally ratio
+            ratio.append(len(data_x)/len(rand_x))
             
 
         
@@ -400,7 +406,7 @@ for i in range(0,loops):
             os.mkdir(path_5)
             
             plt.style.use('dark_background')
-            plt.figure(figsize = [12, 12])
+            plt.figure(figsize = [8, 8])
             plt.scatter(rand_x,rand_y, marker = '.', color = 'white', s = 25)
             plt.xlim(0,1000)
             plt.ylim(0,1000)
@@ -409,7 +415,7 @@ for i in range(0,loops):
             plt.close()
             # Save data image to file:
             plt.style.use('dark_background')
-            plt.figure(figsize = [12, 12])
+            plt.figure(figsize = [8, 8])
             plt.scatter(data_x,data_y, marker = '.', color = 'white', s = 25)
             plt.xlim(0,1000)
             plt.ylim(0,1000)
@@ -419,9 +425,8 @@ for i in range(0,loops):
             plt.close()
             # Save exposure map to file
             plt.style.use('default')
-            plt.figure(figsize = [10, 10])
+            plt.figure(figsize = [8, 8])
             plt.imshow(weight_map,cmap = 'gray', interpolation = 'none', origin = 'lower', norm = LogNorm())
-            plt.colorbar()
             plt.title('Field '+field[target][0]+ ': Normalized sources per pixel')
             plt.savefig(path_5+'/expmap.png')
             plt.close()
