@@ -2,7 +2,6 @@
 # Import Necessary Packages:
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.integrate import quad
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from astropy.io import fits
@@ -34,8 +33,8 @@ field_list = np.unique(field)
 
 # Create output folders
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_1_29_21_test/"
-path3 = "/Users/bbonine/ou/research/corr_func/figures/1_29_21_test/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs/01_30_21/"
+path3 = "/Users/bbonine/ou/research/corr_func/figures/01_30_21/"
 path4 = path3 + "flag/"
 
 if os.path.isdir(path1) == False:
@@ -85,13 +84,13 @@ s_ref = 10**-14 # erg cm^-2 s^-1
 # Specify number of fields to include here:
 
 
-loops = 100
-#loops = len(field_list) # all fields
+
+loops = len(field_list) # all fields
 
 
 # Make null arrays for pair counts
 #bins = np.logspace(0,3.1,10) #logbins
-num_bins = 7
+num_bins = 8
 bins_lin = np.linspace(0,1416,num_bins)
 bins_log =  np.logspace(2,3.15,num_bins)
 
@@ -242,14 +241,12 @@ for i in range(0,loops):
         weight_outer = np.cumsum(N_norm) # 'Outer edge' of pixel weight
         weight_inner = weight_outer - N_norm # 'Inner edge' of pixel weight
         
-        '''
-        1/29/21: Check to see what happens when manually specifying high number of sources. 
-        Consitent with weight maps?
-        '''
-        #n_sources = int(np.sum(N_source)) 
+
+        n_sources = int(np.sum(N_source)) 
+
         
         # Record number of sources
-        num_source[i] = n_sources 
+        #num_source[i] = n_sources 
         
         n_dim = 1000 # specify the dimmension of our image
         img2 = np.zeros(n_dim*n_dim)
@@ -283,8 +280,8 @@ for i in range(0,loops):
         
         
         # Find points
-        rand_x = here2[0] # image position of x values
-        rand_y = here2[1] # image position of y vales
+        rand_x = here2[1] # image position of x values
+        rand_y = here2[0] # image position of y vales
         
 
         
@@ -521,6 +518,7 @@ centers_log = 0.5*(bins_log[1:]+ bins_log[:-1])
 # Write to file
 np.savetxt(path1+ '/out_lin.txt', (centers_lin,corr_mean_lin,varr_mean_lin), delimiter = ',')
 np.savetxt(path1+ '/out_log.txt', (centers_log,corr_mean_log,varr_mean_log), delimiter = ',')
+np.savetxt(path1+ 'ratio.txt', (ratio), delimiter = ',')
 
 print("correlation analysis complete! Have a great day. You're going to kill it.")
 
