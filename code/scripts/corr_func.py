@@ -50,6 +50,7 @@ Begin Main Program
 path_fields = '/Users/bbonine/ou/research/corr_func/data/'
 cat = path_fields + 'agntable_total.txt'
 field = np.loadtxt(cat, dtype = str,delimiter = None, skiprows = 1, usecols=(15) , unpack = True)
+x,y = np.loadtxt(cat, delimiter = None, skiprows = 1, usecols=(16,17) , unpack = True)
 
 # Get rid of duplicates
 field_list = np.unique(field)
@@ -87,8 +88,8 @@ def weight(corr,varr):                   # Weighted Average
     return corr_mu, sig_mu
 
 # Binning
-num_bins = 15
-bins_lin = np.linspace(0,630,num_bins)
+num_bins = 20
+bins_lin = np.logspace(1,2.9,num_bins)
 centers_lin = 0.5*(bins_lin[1:]+ bins_lin[:-1])
 
 # Null arrays
@@ -114,7 +115,11 @@ for i in range(0,loops):
         path_target = path_main+field_list[i]
 
         # Read in values
-        data_x, data_y = np.loadtxt(path_target+'/data.txt',unpack = True, skiprows =1)
+        # For random 'data':
+        #data_x, data_y = np.loadtxt(path_target+'/data.txt',unpack = True, skiprows =1)
+        # For real data:
+        data = np.where(field == field_list[i])[0]
+        data_x,data_y = x[data], y[data]
         rand_x, rand_y = np.loadtxt(path_target+'/rand.txt',unpack = True, skiprows = 1)
 
 
@@ -187,7 +192,12 @@ for i in range(0,len(varr_lin[0])):
     bin_fields[i] = len(corr)
 
 print("Saving Outputs...")
-path_output = '/Users/bbonine/ou/research/corr_func/figures/02_19_21_rand/'
+
+path_output = '/Users/bbonine/ou/research/corr_func/figures/02_20_21_data_log/'
+# Make output folder
+if os.path.isdir(path_output) == False:
+    os.mkdir(path_output)
+
 
 #Convert pixel separation to angular separation
 pix_scale = 47.1262 / 20      # arcseconds / pixel for SWIFT XRT
@@ -200,6 +210,8 @@ plt.xlabel('Separation (Arcsec)')
 plt.ylabel(r'W$(\theta)$')
 plt.title('2paCF: Two Random Images')
 plt.text(200,-0.04, r'$\mu = $' +str(np.around(np.mean(corr_mean),3)))
+plt.yscale('log')
+plt.xscale('log')
 plt.savefig(path_output+'corr_weight_mean.png')
 
 # Save info to text files

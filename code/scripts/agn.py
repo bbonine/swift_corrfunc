@@ -33,8 +33,8 @@ field_list = np.unique(field)
 
 # Create output folder
 
-path1 = "/Users/bbonine/ou/research/corr_func/outputs_test_2/"
-path3 = "/Users/bbonine/ou/research/corr_func/figures/12_15_2/"
+path1 = "/Users/bbonine/ou/research/corr_func/outputs_test_12_22_2/"
+path3 = "/Users/bbonine/ou/research/corr_func/figures/12_22_2/"
 os.mkdir(path1)
 os.mkdir(path3)
 
@@ -74,13 +74,13 @@ s_ref = 10**-14 # erg cm^-2 s^-1
 ################################################
 # Specify number of fields to include here:
 
-loops = len(field_list) # all fields
-#loops = 10
+#loops = len(field_list) # all fields
+loops = 300 
 
 # Make null arrays for pair counts
 #bins = np.logspace(0,3.1,10) #logbins
-num_bins = 8
-bins = np.linspace(0,1500,num_bins)
+num_bins = 10
+bins = np.linspace(0,1200,num_bins)
 
 dd_stack = np.zeros(num_bins - 1)
 dr_stack = np.zeros(num_bins -1)
@@ -212,7 +212,7 @@ for i in range(0,loops):
         here2 = np.where(rand_img > 0)
         rand_x = here2[0] # image position of x values
         rand_y = here2[1] # image position of y vales
-        N_r = len(rand_x) # Tally number of random pionts
+        
         
         
         '''
@@ -306,10 +306,10 @@ for i in range(0,loops):
             
             # Collect ratio of data to random points
             
-            if len(data_x) / len(rand_x) <= 2:
+            if ((len(data_x) / len(rand_x)) <= 2) and ((len(data_x) / len(rand_x)) >= 0.4):
                 ratio.append(len(data_x) / len(rand_x))
                 dd_stack += (dd/2 )
-                dr_stack += dr 
+                dr_stack += dr /2
                 rr_stack += (rr/2)
                         
                 N_d += len(data_x)
@@ -321,7 +321,7 @@ for i in range(0,loops):
 
  # Evaluate   
 N = (N_d*N_r)**2 / ((N_d*(N_d-1)) * (N_r*(N_r-1)))
-corr = W_ham(dd_stack,dr_stack,rr_stack)
+
 varr = 3*((1+(corr)**2) / dd_stack)
 
 #Plot 

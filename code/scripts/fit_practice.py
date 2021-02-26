@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Sep  1 12:59:00 2020
-Going to use this script to practice fitting some functions. 
+Going to use this script to practice fitting some functions.
 This script follow sthe scipy cookbook avaliable here: https://scipy-cookbook.readthedocs.io/items/FittingData.html
 @author: bbonine
 """
@@ -13,22 +13,21 @@ import matplotlib.pyplot as plt
 from scipy import optimize
 
 #Specify working directory
-path1= "/Users/bbonine/ou/research/corr_func/outputs_2/"
-
-#Specify output directory 
-path2 = "/Users/bbonine/ou/research/corr_func/figures/11_10/"
+path = '/Users/bbonine/ou/research/corr_func/figures/02_20_21_data_log/'
 
 
-# Read in output file
-data = np.genfromtxt(path1+'out.txt', delimiter = ',', unpack=True)
-ratios = np.loadtxt(path1+'ratios.txt', delimiter = ',')
-x = data[:,0] # bin centers
-y = data[:,1] # W(theta)
-y_err= np.sqrt(data[:,2]) # error
+# Read in output files
+centers,corr,sig = np.loadtxt(path+'out.txt',usecols = (0,1,2), skiprows = 1, unpack = True)
 
 
+#ratios = np.genfromtxt(path1+'ratio.txt',delimiter = ',')
 
+# Select only positive values to use in the fit
+pos_vals = np.where(corr > 0)[0]
 
+x = centers[pos_vals]
+y = corr[pos_vals]
+y_err = sig[pos_vals]
 #convert to log
 
 logx = np.log10(x)
@@ -43,7 +42,7 @@ fitfunc = lambda p, x: p[0] + p[1] * x
 errfunc = lambda p, x, y, err: (y - fitfunc(p,x)) / err
 
 pinit = [1.0, -1.0]
-out = optimize.leastsq(errfunc, pinit, 
+out = optimize.leastsq(errfunc, pinit,
                        args = (logx, logy, logyerr), full_output = 1)
 pfinal = out[0]
 covar = out[1]
@@ -51,19 +50,19 @@ print(pfinal)
 print(covar)
 
 index = pfinal[1]
-amp = 10.0**pfinal[0]
+amp = 10.0**(pfinal[0])
 
 indexErr = np.sqrt(covar[1][1])
 ampErr = np.sqrt(covar[0][0]) * amp
 
 #Plot the data
 
-# Set global plot params 
+# Set global plot params
 
 
-fontsize = 20
+fontsize = 10
 figsize = (8,6)
-dpi = 150
+dpi = 300
 
 plt.rcParams.update({'font.size': fontsize, 'figure.figsize': figsize, 'figure.dpi': dpi})
 plt.rcParams['xtick.labelsize'] = fontsize
@@ -84,7 +83,7 @@ plt.rcParams['xtick.direction'] = 'in'
 plt.rcParams['ytick.direction'] = 'in'
 plt.figure(figsize = [8,8])
 plt.figure(dpi = 300)
-x_fit = np.linspace(66,1200,num = 1000)
+x_fit = np.linspace(1,700,num = 1000)
 
 
 '''
@@ -93,23 +92,26 @@ Linear Scale Fit
 %%%%%%%%%%%%%%%%%%
 '''
 
-plt.figure(figsize = [8,6], dpi = 200)
+plt.figure(figsize = [8,6], dpi = 300)
 
 #Fit
-plt.plot(x_fit,powerlaw(x_fit,amp,index), label = 'Fit', color = 'red', linewidth = 1) # fit
-plt.errorbar(x,y, yerr = y_err, fmt = 'k^',elinewidth = 0.3, ms = 4, mew = 0.3, mfc = 'none', capsize = 3, label = "SACS", linewidth = 1) # data
-plt.text(600,.65, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),2)), fontsize = 10) 
-plt.text(600,.63, r'$\gamma = $' + str(np.around(1-index,2)),fontsize = 10)
-
+plt.plot(x_fit,powerlaw(x_fit,amp,index), label = 'SACS', color = 'red', linewidth = 0.6) # fit
+plt.errorbar(centers,corr, yerr = sig, fmt = 'ko',elinewidth = 0.3, ms = 4, mew = 0.3, mfc = 'none', capsize = 3, linewidth = 0.6) # data
 # Koutilidas Result
-plt.plot(x_fit,(1/1.6)**(1-1.7)*(x_fit)**(1-1.7), label = 'Koutoulidas et al. ', color = 'red', linewidth = 1, linestyle = '-.')
-
+plt.plot(x_fit,(1/1.6)**(1-1.7)*(x_fit)**(1-1.7), label = 'Koutoulidas et al. ', color = 'red', linewidth = 0.6, linestyle = '-.')
 # Params
 plt.title('Best Fit Power Law: All fields')
-plt.xlabel('Angular Separation (Arcseconds)', fontsize = 8)
+plt.xlabel('Angular Separation (Pixels)', fontsize = 8)
 plt.ylabel(r'W$(\theta)$', fontsize = 8)
 plt.legend(fontsize = 8)
-plt.savefig(path2+ 'fit1_all_bins.png')
+
+plt.xscale('log')
+plt.yscale('log')
+plt.text(300,0.6, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),3)), fontsize = 10)
+plt.text(300,1.1, r'$\gamma = $' + str(np.around(1-index,3)),fontsize = 10)
+
+plt.xlim(10,650)
+plt.savefig(path+ 'fit_lin1.png')
 plt.close()
 
 
@@ -117,49 +119,54 @@ plt.close()
 %%%%%%%%%%%%%%%%%%
 Log Scale Fit
 %%%%%%%%%%%%%%%%%%
-'''
+
 #Fit
 plt.figure(figsize = [8,6], dpi = 200)
 plt.loglog(x_fit, powerlaw(x_fit, amp, index), label = 'Fit', color = 'red', linewidth = 1)
-plt.errorbar(x, y, yerr=y_err, fmt='k^', elinewidth = 0.3, capsize = 3,ms = 4, mew =0.3, mfc = 'none', label = "SACS")  # Data 
+plt.errorbar(centers, corr, yerr=sig, fmt='k^', elinewidth = 0.3, capsize = 3,ms = 4, mew =0.3, mfc = 'none', label = "SACS")  # Data
 
 # Koutilidas Result
 plt.plot(x_fit, (1/1.6)**(1-1.7)*(x_fit)**(1-1.7), label = 'Koutoulidas et al. ', color = 'red', linewidth = 1, linestyle = '-.')
 
 
-plt.title('Best Fit Power Law: Log Scale)')  
-plt.xlabel('Angular Separation (Arcseconds) [Log-scale]', fontsize = 8)
-plt.text(400,.65, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),2)), fontsize = 10) 
+plt.title('Best Fit Power Law: Log Scale)')
+plt.xlabel('Angular Separation (Pixels) [Log-scale]', fontsize = 8)
+plt.text(400,.65, r'$\theta_0 = $' + str(np.around(1/(amp**(1/index)),2)), fontsize = 10)
 plt.text(400,.5, r'$\gamma = $' + str(np.around(1-index,2)),fontsize = 10)
-plt.ylabel(r'W$(\theta)$', fontsize =8)  
-plt.legend(fontsize = 8)    
-plt.savefig(path2+ 'fit2_all_bins.png')
+plt.ylabel(r'W$(\theta)$', fontsize =8)
+plt.legend(fontsize = 8)
+plt.savefig(path+ 'fit_lin2.png')
 plt.close()
-
+'''
 
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Histogram for Random Sources
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-'''
-plt.figure(figsize = [8,6], dpi = 300)
-plt.hist((1/ratios), bins =50,  color = '#AAAAFF' , histtype = 'stepfilled', linewidth = 1, alpha = 0.7)
-plt.xlabel(r'$\frac{R}{D}$')
+
+plt.figure(figsize = [7,6], dpi = 300)
+plt.hist(ratios, bins =60,  color = '#AAAAFF' , histtype = 'stepfilled', linewidth = 1, alpha = 0.7)
+
+plt.vlines(0.5,0,160, linestyle = '--', linewidth = 0.5 )
+plt.vlines(2.5,0,160, linestyle = '--', linewidth = 0.5 )
+
+plt.xlabel(r'$\frac{D}{R}$')
 plt.ylabel('Counts')
-plt.title('Ratio of Simulated to Real Sources in Each Field')
+plt.title('SACS: All Fields')
 plt.xlim(0,4)
-plt.text(2.5, 80, r'$\mu = $' + str(np.around(np.mean(1/ratios),2)), fontsize = 12)
-plt.savefig(path2+ '/ratios.png')
+plt.ylim(0,160)
+plt.text(3, 120, r'$\mu = $' + str(np.around(np.mean(ratios),2)), fontsize = 12)
+plt.savefig(path2+ 'ratios.png')
 plt.close()
 
-
+'''
 
 
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Histogram for Random Sources; cut
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-'''
+
 
 here = np.where(1/ratios < 2)
 plt.figure(figsize = [8,6], dpi = 300)
@@ -173,11 +180,4 @@ plt.text(1.5, 75, r'$\mu = $' + str(np.around(np.mean(1/ratios[here]),2)), fonts
 plt.savefig(path2+ '/ratios_cut.png')
 plt.close()
 
-
-
-
-
-
-
-
-
+'''
