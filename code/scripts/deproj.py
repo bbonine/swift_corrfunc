@@ -25,7 +25,7 @@ data = np.genfromtxt(path1+'out.txt', delimiter = ',', unpack=True)
 angcorr = data[:,1]
 varr = np.sqrt(data[:,2])
 
-gam_fit = 1.5
+gam_fit = 1.7
 
 '''
 Reminder: Cosmology values we need

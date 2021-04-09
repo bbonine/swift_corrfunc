@@ -1,14 +1,12 @@
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Filename: corr_func_color.py
+Filename: rand_img_color.py
 Actions:
     - Calcualte color excess for each AGN
-    - Flag AGN as either IR or Not
-    - Compute the Correlation Function for the two cases
-    - Evaluate the weighted average (and error) for each bin
+    - generate random catalogs for red and blue samples
     - Plot and save outputs
 Author: Brett Bonine
-brett.s.bonine-1@ou.edu
+bonine@ou.edu
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 '''
 print("-----------------------------------------------------------------------")
@@ -25,30 +23,8 @@ import os       # make outputs dirs
 from astropy.io import fits # read in exposure map data
 from scipy.interpolate import InterpolatedUnivariateSpline # interpolate flux vals
 
-#####################################################################
-# Matplotlib stuff
-fontsize = 8
-figsize = (3,3)
-dpi = 300
-
-# Configure parameters
-plt.rcParams.update({'font.size': fontsize, 'figure.figsize': figsize, 'figure.dpi': dpi})
 
 # Default tick label size
-plt.rcParams['text.usetex'] = False
-plt.rcParams['xtick.labelsize'] = fontsize
-plt.rcParams['ytick.labelsize'] = fontsize
-plt.rcParams['xtick.direction'] = 'in'
-plt.rcParams['ytick.direction'] = 'in'
-plt.rcParams['xtick.major.size'] = 4
-plt.rcParams['ytick.major.size'] = 4
-plt.rcParams['xtick.major.width'] = 1
-plt.rcParams['ytick.major.width'] = 1
-
-plt.rcParams['xtick.top'] = True
-plt.rcParams['ytick.right'] = True
-plt.rcParams['axes.linewidth'] = 1
-
 
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -57,13 +33,27 @@ Begin Main Program
 '''
 #######################################################################
 # Read in field list and fluxlimit info
-path_fields = '/Users/bbonine/ou/research/corr_func/data/'
+#path_fields = '/Users/bbonine/ou/research/corr_func/data/'
+
+# Remote path:
+
+
+
+
+path_fields = '/Users/bonine/research/corr_func/data/'
 cat = path_fields + 'agntable_total.txt'
 field = np.loadtxt(cat, dtype = str,delimiter = None, skiprows = 1, usecols=(15) , unpack = True)
 w1,w2,x,y = np.loadtxt(cat, delimiter = None, skiprows = 1, usecols=(10,11,16,17) , unpack = True)
 n_agn = len(x)
 
 field_list = np.unique(field)  # clear duplicates
+
+# Convert to strings to upper case (necessary to match exposure map directory names on remote)
+for i in range(0,len(field_list)):
+    field_list[i] = field_list[i].upper()
+
+
+
 
 lim = path_fields + 'fluxlimit.txt'
 exp, fluxlim = np.loadtxt(lim,skiprows = 1, unpack = True)
@@ -113,7 +103,9 @@ exp_mean = np.zeros(loops)
 #####################################################################
 # Setup output folders
 out = input("Please Enter Output Directory Name: ")
-path_out = "/Users/bbonine/ou/research/corr_func/outputs/color/" + out +"/"
+#path_out = "/Users/bbonine/ou/research/corr_func/outputs/color/" + out +"/"
+# Remote path:
+path_out = "/Users/bonine/research/corr_func/outputs/color/"+out + "/"
 print("Outputs will be saved to " + path_out)
 if os.path.isdir(path_out) == False:
     os.mkdir(path_out)
@@ -155,7 +147,8 @@ for i in range(0,loops):
 
 
     # Check for exposure map
-    if os.path.isfile(path_fields  + field_list[i] +'/expo.fits') == True:
+    path_exp = '/Volumes/hd5/swift/grb/'
+    if os.path.isfile(path_exp  + field_list[i] +'/expo.fits') == True:
         expmap = path_fields + field_list[i] +'/expo.fits'
         
         # Make directory for outuput files for this field:
@@ -168,7 +161,7 @@ for i in range(0,loops):
         hdu_list = fits.open(expmap)
         image_data = hdu_list[0].data
         hdu_list.close()
-        exp_map_1d =  image_data.ravel() #Conver exposure map to 1D array for later
+        exp_map_1d =  image_data.ravel() #Convert exposure map to 1D array for later
 
         # Record mean value
         exp_mean[i] = np.mean(exp_map_1d)
@@ -226,8 +219,8 @@ for i in range(0,loops):
         n_sources = int(np.sum(N_source))
 
         # Segregate by color
-        n_red = int(red_frac*n_sources)
-        n_blue = int(blue_frac*n_sources)
+        n_red = int(10*red_frac*n_sources)
+        n_blue = int(10*blue_frac*n_sources)
 
         n_dim = 1000 # specify the dimmension of our image
         rand_img_red = np.zeros(n_dim*n_dim)
@@ -282,37 +275,6 @@ for i in range(0,loops):
 
         data_x_blue = data_x[flags ==1]
         data_y_blue = data_y[flags ==1]
-
-        # Plot
-        plt.figure(figsize = [4, 4])
-        plt.scatter(rand_x_red,rand_y_red, marker = '.', color = 'red', s = 25)
-        plt.xlim(0,1000)
-        plt.ylim(0,1000)
-        plt.title('Field '+field[target][0]+ ': Random Image (MIR Red)')
-        plt.savefig(path2 + '/rand_img_red.png')
-        plt.close()
-
-
-        # Plot
-        plt.figure(figsize = [4, 4])
-        plt.scatter(rand_x_blue,rand_y_blue, marker = '.', color = 'blue', s = 25)
-        plt.xlim(0,1000)
-        plt.ylim(0,1000)
-        plt.title('Field '+field[target][0]+ ': Random Image (MIR Blue)')
-        plt.savefig(path2 + '/rand_img_blue.png')
-        plt.close()
-
-        # Save data image to file:
-        plt.figure(figsize = [4, 4])
-        plt.scatter(data_x_red,data_y_red, marker = '.', color = 'red', s = 25)
-        plt.scatter(data_x_blue,data_y_blue, marker = '.', color = 'blue', s = 25)
-        plt.xlim(0,1000)
-        plt.ylim(0,1000)
-        plt.title('Field '+field[target][0]+ ': Data Image')
-        plt.savefig(path2 + '/data_img.png')
-        plt.close()
-    
-
         # Save data to file
         for j in range(0,len(rand_x_red)):
             f.write(field[target][0]+"\t"+repr(rand_x_red[j])+"\t"+repr(rand_y_red[j])+"\t" +repr(0)+"\n")
